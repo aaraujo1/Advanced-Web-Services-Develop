@@ -1,7 +1,10 @@
 from gpiozero import MotionSensor, LED, Button
 from time import sleep
 from picamera import PiCamera
+from random import randint
 import datetime
+import requests
+import json
 
 
 
@@ -19,6 +22,16 @@ class Modas:
 		# init PIR
 		self.pir = MotionSensor(25)
 		
+		#init datetime
+		now = datetime.datetime.now()
+		date = now.strftime("%Y-%m-%d")
+		
+		#init log file
+		self.filename = date + ".log"
+		
+		
+		
+		
 		# when button  is released, toggle system arm / disarm
 		self.button.when_released = self.toggle
 		
@@ -33,8 +46,10 @@ class Modas:
 		# TODO: Take photo
 		#camera.capture('/home/pi/Pictures/PISensor/image.jpg')
 		self.snap_photo()
+		self.log()
 		# delay
 		sleep(2)
+		
 		
 	def reset(self):
 		self.red.off()
@@ -70,6 +85,7 @@ class Modas:
 		self.green.off()
 		print("System disarmed")
 		
+		
 	def snap_photo(self):
 		# TODO: set camera resolution
 		#camera.resolution = (1024, 768)
@@ -79,10 +95,34 @@ class Modas:
 		now = datetime.datetime.now()
 		date_time = now.strftime("%m-%d-%Y %H:%M:%S.%f")[:-3]
 		self.camera.annotate_text = date_time
-		self.camera.capture('/home/pi/Pictures/PISensor/image' + ' ' + date_time +'.jpg')
+		self.camera.capture('/home/pi/awsd/PISensor/image' + ' ' + date_time +'.jpg')
 		print("Photo taken")
 		# TODO: disable camera
 		#camera.stop_preview()
+		
+	
+	def log(self):
+		# create a new event - replace with your API
+		now = datetime.datetime.now()
+		date_time = now.strftime("%m-%d-%Y %H:%M:%S.%f")
+		
+		rand = randint(1, 3)
+		
+		
+		url = 'https://modasaga.azurewebsites.net/api/event/'
+		headers = { 'Content-Type': 'application/json'}
+		payload = { 'timestamp': date_time, 'flagged': False, 'locationId': rand }
+		# post the event
+		r = requests.post(url, headers=headers, data=json.dumps(payload))
+		print(r.status_code)
+		print(r.json())
+		
+		#open log file
+		f = open(self.filename, "a")
+		f.write(str(date_time) + ",FALSE," + str(rand) + "," + str(r.status_code)+ "\n")
+		
+		#close log
+		f.close()
 
 m = Modas()
 
